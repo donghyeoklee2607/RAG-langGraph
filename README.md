@@ -1,5 +1,6 @@
 # RAG with LangGraph
 
+
 This project implements and compares three RAG architectures using LangGraph:
 
 - **001. Naive RAG with LangGraph**
