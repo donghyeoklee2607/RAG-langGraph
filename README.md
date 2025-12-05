@@ -1,5 +1,14 @@
 # RAG with LangGraph
 
+## Index
+
+0. [Project Configuration](#0-project-configuration)
+1. [RAG Architectures – Web Search RAG (Final)](#1-rag-architectures-003-web-search-rag-with-langgraph-final)
+2. [Challenge – Q1: Data Preparation](#2-challenge--q1-data-preparation)
+3. [Challenge – Q2: Retrieval Component](#3-challenge--q2-retrieval-component)
+4. [Challenge – Q3: Generation Component](#4-challenge--q3-generation-component)
+5. [Findings & Trade-offs](#5-findings--trade-offs)
+
 
 This project implements and compares three RAG architectures using LangGraph:
 
