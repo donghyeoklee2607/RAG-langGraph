@@ -7,7 +7,7 @@ This project implements and compares three RAG architectures using LangGraph:
 - **003. Web Search RAG with LangGraph (Final Selected Architecture)**
 
 <p align="center">
-  <img src="images/RAG%20Architecture.png" width="800">
+  <img src="images/RAG%20Architecture.png" width="500">
 </p>
 
 All architectures use a single PDF document as the initial knowledge source:
