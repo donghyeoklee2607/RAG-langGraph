@@ -26,6 +26,19 @@ All architectures use a single PDF document as the initial knowledge source:
 
 ## 0. Project Configuration
 
+PDF Loader Rank (The lower, the better)
+
+| | PDFMiner | PDFPlumber | PyPDFium2 | PyMuPDF | PyPDF2 |
+|----------|:---------:|:----------:|:---------:|:-------:|:-----:|
+| Medical  | 1         | 2          | 3         | 4       | 5     |
+| Law      | 3         | 1          | 1         | 3       | 5     |
+| Finance  | 1         | 2          | 2         | 4       | 5     |
+| Public   | 1         | 1          | 1         | 4       | 5     |
+| Sum      | 5         | 5          | 7         | 15      | 20    |
+
+Source: [AutoRAG Medium Blog](https://velog.io/@autorag/PDF-%ED%95%9C%EA%B8%80-%ED%85%8D%EC%8A%A4%ED%8A%B8-%EC%B6%94%EC%B6%9C-%EC%8B%A4%ED%97%98#%EC%B4%9D%ED%8F%89)
+
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -98,7 +111,7 @@ def web_search(state: GraphState) -> GraphState:
     search_result = tavily_tool.search(
         query=latest_question,
         topic="general",
-        max_results=6,
+        max_results=5,
         format_output=True,
     )
 
