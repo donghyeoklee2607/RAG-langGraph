@@ -151,10 +151,10 @@ documents = [doc.to_langchain_format() for doc in documents]
  
 **2.2 Chunking**
 ```
-RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=50)
+RecursiveCharacterTextSplitter(chunk_size=700, chunk_overlap=150)
 ```
-- Chunk size: 300 characters
-- Overlap: 50 characters
+- Chunk size: 700 characters
+- Overlap: 150 characters
 This improves retrieval precision while preserving context continuity.
 
 **2.3 Text Normalisation**
@@ -173,7 +173,7 @@ This improves retrieval precision while preserving context continuity.
 | text-embedding-3-large | 9,615            | 64.6%                     | 8191      |
 | text-embedding-ada-002 | 12,500           | 61.0%                     | 8191      |
 
-- Embedding: text-embedding-3-small
+- Embedding: text-embedding-3-large
 - Vector store: FAISS
 - Top-k: 10
 
@@ -185,7 +185,7 @@ faiss_retriever = faiss_vectorstore.as_retriever(search_kwargs={"k": 10})
 
 ensemble_retriever = EnsembleRetriever(
     retrievers=[bm25_retriever, faiss_retriever],
-    weights=[0.3, 0.7],
+    weights=[0.2, 0.8],
 )
 ```
 1) This ensures that only the 10 most lexically and semantically similar chunks are returned for each query.
