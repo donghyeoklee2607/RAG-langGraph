@@ -200,12 +200,11 @@ ensemble_retriever = EnsembleRetriever(
 1) This ensures that only the 10 most lexically and semantically similar chunks are returned for each query.
 2) If the retrieved context is judged not relevant, RAG switches to web search via Tavily and updates the context accordingly.
 
-**Reranking**
+**- Reranking** : Replaces similarity-only ranking with cross-encoder semantic reranking.
 <p align="left">
   <img src="images/reranker-benchmark.png" width="800">
 </p>
 
-- Replaces similarity-only ranking with cross-encoder semantic reranking.
 ```
 compressor = FlashrankRerank(
     model="ms-marco-MultiBERT-L-12",
