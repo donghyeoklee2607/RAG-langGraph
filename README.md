@@ -109,13 +109,33 @@ def web_search(state: GraphState) -> GraphState:
 ## 2. Challenge – Q1: Data Preparation 
 **2.1 Document Loading**
 
+From
 ```bash
 loader = PDFPlumberLoader(source_uri)
 docs.extend(loader.load())
 ```
 
-Each page is converted into a Document object.
+To
+```bash
+parser = LlamaParse(
+    result_type="markdown",
+    num_workers=8,
+    verbose=True,
+    language="en",
+)
 
+documents = SimpleDirectoryReader(
+    input_files=["data/Deepseek-r1.pdf"],
+    file_extractor={".pdf": parser},
+).load_data()
+
+documents = [doc.to_langchain_format() for doc in documents]
+```
+**Advantage**
+- Preserves Markdown structure.
+- Accurately extracts tables, formulas, and multi-column layouts.
+
+ 
 **2.2 Chunking**
 ```
 RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=50)
@@ -133,31 +153,53 @@ This improves retrieval precision while preserving context continuity.
 ## 3. Challenge – Q2: Retrieval Component
 
 **3.1 Retrieval Method**
-All three architectures use dense vector search:
+
+| MODEL                  | PAGES PER DOLLAR | PERFORMANCE ON MTEB EVAL | MAX INPUT |
+|------------------------|------------------|---------------------------|-----------|
+| text-embedding-3-small | 62,500           | 62.3%                     | 8191      |
+| text-embedding-3-large | 9,615            | 64.6%                     | 8191      |
+| text-embedding-ada-002 | 12,500           | 61.0%                     | 8191      |
+
 - Embedding: text-embedding-3-small
 - Vector store: FAISS
 - Top-k: 10
 
 **3.2 Query Retrieves Relevant Documents**
-- The system retrieves DeepSeek-related chunks from data/Deepseek-r1.pdf.
-- These chunks are concatenated and used as context for the LLM.
-
+- **Ensemble Retrieval** (Ensemble Retriever combining BM25 and FAISS.)
 ```python
-def create_retriever(self, vectorstore):
-    dense_retriever = vectorstore.as_retriever(
-        search_type="similarity",
-        search_kwargs={"k": self.k}   # Top-k = 10
-    )
-    return dense_retriever
-```
-- This ensures that only the 10 most semantically similar chunks are returned for each query.
+bm25_retriever.k = 10
+faiss_retriever = faiss_vectorstore.as_retriever(search_kwargs={"k": 10})
 
-- If the retrieved context is judged not relevant, RAG switches to web search via Tavily and updates the context accordingly.
+ensemble_retriever = EnsembleRetriever(
+    retrievers=[bm25_retriever, faiss_retriever],
+    weights=[0.3, 0.7],
+)
+```
+1) This ensures that only the 10 most lexically and semantically similar chunks are returned for each query.
+2) If the retrieved context is judged not relevant, RAG switches to web search via Tavily and updates the context accordingly.
+
+**Reranking**
+<p align="left">
+  <img src="images/reranker-benchmark.png" width="800">
+</p>
+
+- Replaces similarity-only ranking with cross-encoder semantic reranking.
+```
+compressor = FlashrankRerank(
+    model="ms-marco-MultiBERT-L-12",
+    top_n=10
+)
+
+compression_retriever = ContextualCompressionRetriever(
+    base_compressor=compressor,
+    base_retriever=ensemble_retriever
+)
+```
 
 
 ## 4. Challenge – Q3: Generation Component
 **4.1 LLM Interface**
-- Model: gpt-4o-mini
+- Model: gpt-4.1-mini
 - Temperature: 0 (deterministic behavior)
 
 **4.2 Combining Query and Retrieved Context**
@@ -170,10 +212,8 @@ response = pdf_chain.invoke(
     }
 )
 ```
-
-- The LLM receives The latest user question,
-- the retrieved context (from PDF or web search),
-- and Chat history
+- The LLM receives The latest user question that was written by Query Rewrite Node,
+- and the retrieved context (from PDF or web search).
 
 **4.3 How Context Is Used**
 - For document-grounded questions (e.g., "What is DeepSeek-R1-Zero?"), the model uses only PDF chunks as evidence.
@@ -188,7 +228,13 @@ response = pdf_chain.invoke(
 | Query Rewrite RAG            | Improved retrieval accuracy                   | Cannot handle out-of-document queries                    |
 | Web Search RAG               | Handles external knowledge, highest robustness| Increased complexity and LLM calls                       |
 | Small chunks                 | High retrieval precision                      | Larger vector index                                      |
+| Ensemble Retrieval           | Joint lexical + semantic coverage             | Higher memory usage                                      |
+| FlashRank Reranker           | State-of-the-art semantic ranking accuracy    | Increased latency                                        |
 | Temperature = 0              | High reproducibility                          | Lower creativity                                         |
 | No text normalisation        | Preserves technical terms and original meaning| Potential noise from stopwords and unnormalised tokens   |
+
+
+
+
 
 
