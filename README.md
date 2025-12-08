@@ -148,8 +148,21 @@ documents = [doc.to_langchain_format() for doc in documents]
 - Preserves Markdown structure.
 - Accurately extracts tables, formulas, and multi-column layouts.
 
+**2.2 Data Preprocessing**
+- Page Filtering (Reference & Appendix Removal)
+```
+documents = documents[:16]
+```
+- Removal of <think> / <answer> Blocks
+To avoid confusion with chain-of-thought style content embedded in the PDF,
+```
+def remove_think_and_answer_blocks(text: str) -> str:
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    text = re.sub(r"<answer>.*?</answer>", "", text, flags=re.DOTALL)
+    return text
+```
  
-**2.2 Chunking**
+**2.3 Chunking**
 ```
 RecursiveCharacterTextSplitter(chunk_size=700, chunk_overlap=150)
 ```
@@ -157,10 +170,6 @@ RecursiveCharacterTextSplitter(chunk_size=700, chunk_overlap=150)
 - Overlap: 150 characters
 This improves retrieval precision while preserving context continuity.
 
-**2.3 Text Normalisation**
-- Although techniques like stopword removal, lower-casing, and punctuation cleaning are possible, they were intentionally not applied.
-- Because the source is a technical document with formulas, abbreviations, and domain-specific terms, strong normalisation could distort meaning.
-- Therefore, the raw text extracted from the PDF is preserved.
 
 
 ## 3. Challenge – Q2: Retrieval Component
@@ -235,18 +244,18 @@ response = pdf_chain.invoke(
 
 
 ## 5. Findings & Trade-offs
-| Architecture / Design Choice | Strengths                                      | Limitations                                              |
-|------------------------------|-----------------------------------------------|----------------------------------------------------------|
-| Naive RAG                    | Simple and fast                               | High hallucination risk                                  |
-| Query Rewrite RAG            | Improved retrieval accuracy                   | Cannot handle out-of-document queries                    |
-| Web Search RAG               | Handles external knowledge, highest robustness| Increased complexity and LLM calls                       |
-| Small chunks                 | High retrieval precision                      | Larger vector index                                      |
-| Ensemble Retrieval           | Joint lexical + semantic coverage             | Higher memory usage                                      |
-| FlashRank Reranker           | State-of-the-art semantic ranking accuracy    | Increased latency                                        |
-| Temperature = 0              | High reproducibility                          | Lower creativity                                         |
-| No text normalisation        | Preserves technical terms and original meaning| Potential noise from stopwords and unnormalised tokens   |
-
-
+| Architecture / Design Choice                 | Strengths                                                      | Limitations                                                     |
+| -------------------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------------- |
+| Naive RAG                                    | Simple and fast                                                | High hallucination risk                                         |
+| Query Rewrite RAG                            | Improved retrieval accuracy via better-formed queries          | Cannot handle out-of-document queries on its own                |
+| Web Search RAG                               | Handles external knowledge, highest robustness                 | Increased complexity and LLM/tooling calls                      |
+| Chunk size 700 / overlap 150                 | Preserves full reasoning spans and long paragraphs             | Reduced retrieval granularity                                   |
+| Ensemble Retrieval (BM25 + FAISS, 0.2 / 0.8) | Joint lexical + semantic coverage, robust across query types   | Higher memory usage and more compute per query                  |
+| FlashRank Reranker (ms-marco-MultiBERT-L-12) | State-of-the-art semantic ranking accuracy                     | Additional latency for cross-encoder reranking                  |
+| `text-embedding-3-large` for main index      | Higher retrieval quality on technical & long-form content      | More expensive per token than 3-small                           |
+| Temperature = 0                              | High reproducibility, stable evaluation                        | Lower creativity; less suitable for open-ended generation       |
+| Removal of `<think>/<answer>` CoT blocks     | Prevents contamination from embedded CoT that confuses the LLM | Some potentially useful reasoning traces are discarded entirely |
+| Page filtering (exclude references/appendix) | Focuses retrieval on core paper content                        | Citations/appendix details are not retrievable                  |
 
 
 
